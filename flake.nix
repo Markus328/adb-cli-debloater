@@ -18,7 +18,10 @@
         inherit system;
       };
 
-      debloater = pkgs.stdenv.runCommand "debloater" {buildInputs = with pkgs; [jq android-tools];} (builtins.readFile ./src/debloat.sh);
+      debloater = pkgs.runCommand "adb-debloater" {buildInputs = with pkgs; [jq android-tools];} ''
+        mkdir -p $out/bin
+        cp ${./src/debloat.sh} $out/bin/adb-debloater
+        sed -i "2 i export PATH=$PATH:\$PATH" $out/bin/adb-debloater'';
     in {
       packages.default = debloater;
     });
