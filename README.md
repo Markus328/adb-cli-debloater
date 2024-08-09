@@ -1,62 +1,48 @@
-# Debloat MIUI/HyperOS, One UI, and Pixel Launcher via ADB
+# CLI debloater for HyperOS/MIUI, OneUI and Pixel
 
-[telegram-news-badge]: https://img.shields.io/badge/Sophia%20News-Telegram-blue?style=flat&logo=Telegram
-[telegram-news]: https://t.me/sophianews
-[telegram-group]: https://t.me/sophia_chat
-[telegram-group-badge]: https://img.shields.io/badge/Sophia%20Chat-Telegram-blue?style=flat&logo=Telegram
+This shell script uses adb to disable or uninstall unwanted packages from your device based in a JSON file (just like those in src/JSON)
 
-[![Telegram][telegram-news-badge]][telegram-news] [![Telegram][telegram-group-badge]][telegram-group]
+## Usage
 
-[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Q5Q51QUJC)
+You need to connect your device to adb previously using any method as you want.
 
-<a href="https://yoomoney.ru/to/4100116615568835"><img src="https://yoomoney.ru/i/shop/iomoney_logo_color_example.png" width=220px height=46px></a>
-
-## Get apps packages list
-
-```cmd
-adb.exe shell pm list packages -f > D:\packages.txt
+```shell
+src/debloat.sh <json file> [adb options...]
 ```
 
-## Copy folder to local drive
+The script will show you any package in your device which needs to be disabled. You can pass extra adb options, per example, to select what device you want to debloat (if there are many devices connected).
 
-```cmd
-# /storage/emulated/0
-# /sdcard
+## Examples
 
-# Check the whole filesystem
-adb shell ls /data
+First of all, connect the device to adb, through USB or TCP/IP.
 
-adb pull /storage/3039-3538/dcim/camera D:\folder
-adb pull sdcard/DCIM/Camera D:\folder
+```shell
+adb connect <device's ip>:5555
+```
+Ensure the device is connected and authorized. Then, run the script and pass the JSON file based on your device's UI.
+
+```shell
+src/debloat.sh src/JSON/Xiaomi.json
+```
+![image](https://github.com/user-attachments/assets/070b3401-180e-4b8e-9e90-db47f1d464a1)
+
+If you have more than one device connected, you can pass the option `-t <id>` to select. You can also pass `-e` or `-d` and so on.
+
+```shell
+src/debloat.sh src/JSON/Xiaomi.json -t 2
+```
+```shell
+src/debloat.sh src/JSON/Xiaomi.json -d
+```
+```shell
+src/debloat.sh src/JSON/Xiaomi.json -e
 ```
 
-## Screenshot
+## Other Support
 
-![image](https://user-images.githubusercontent.com/10544660/233859224-6bb2e199-3833-4238-a670-aa98960e3801.png)
+You can create or modify the json files in src/JSON as you want and use any debloat list in any device.
+Sometimes, the packages cannot be disabled, then, the script will ask for uninstalling it.
 
-## How-to
 
-* Connect phone to PC via USB cable;
-* Enable USB debugging in your phone OS;
-* Download and expand latest release archive;
-* Download ADB via `Download_ADB.ps1`;
-* Run `Function.ps1`.
 
-## Links
 
-* [Google USB Driver](https://developer.android.com/studio/run/win-usb)
-  * [Official all OEMs drivers](https://developer.android.com/studio/run/oem-usb#Drivers)
-* [Download ADB](https://developer.android.com/studio/releases/platform-tools)
-* [App Inspector](https://play.google.com/store/apps/details?id=com.ubqsoft.sec01)
-* [ADB AppControl](https://4pda.to/forum/index.php?showtopic=993643)
-* [ReVanced](https://github.com/revanced)
-* [My ReVanced Builder](https://github.com/farag2/ReVanced_Builder)
-
-## Ask a question on
-
-* MIUI
-  * [Mi 11T Pro](https://4pda.to/forum/index.php?showtopic=1032499&st=2320#entry112088380)
-  * [Mi 10T](https://4pda.to/forum/index.php?s=&showtopic=1005145&view=findpost&p=100967182)
-  * [Mi 9T](https://4pda.to/forum/index.php?s=&showtopic=955101&view=findpost&p=93561572)
-* One UI
-  * [Galaxy S20](https://4pda.to/forum/index.php?s=&showtopic=953111&view=findpost&p=97533733)
