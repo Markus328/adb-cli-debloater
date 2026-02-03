@@ -31,10 +31,9 @@ if [ ! -f "$json_file" ]; then
 fi
 
 
-adbc shell command -v pm >/dev/null
 
 
-if [ $? -ne 0 ]; then
+if ! adbc shell command -v pm >/dev/null; then
   echo "Couldn't access device's package manager through 'adb $adb_args shell'. Are you sure the device is connected and/or the options are right?" >&2
   terminate
 fi
@@ -50,9 +49,8 @@ need_disable=()
 
 select_packages(){
 
-device_packages=(`adbc shell pm list packages --user 0 -e | cut -d ':' -f2`)
-json_packages=($(jq -r '.[].Package' $json_file))
-
+mapfile -t device_packages <<< "$(adbc shell pm list packages --user 0 -e | cut -d ':' -f2)"
+mapfile -t json_packages <<< "$(jq -r '.[].Package' "$json_file")"
 
 for jp in "${json_packages[@]}"; do
   for dp in "${device_packages[@]}"; do
@@ -62,7 +60,7 @@ for jp in "${json_packages[@]}"; do
   done
 done
 
-need_disable=($(echo "${need_disable[@]}" | tr ' ' '\n' |  sort | uniq))
+mapfile -t need_disable <<< "$(echo "${need_disable[@]}" | tr ' ' '\n' |  sort | uniq))"
 
 if [ ${#need_disable[@]} -eq 0 ]; then
   echo "No package needs to be disabled. Your device is unbloated :)"
@@ -74,13 +72,13 @@ fi
 
 disable_packages(){
 
-echo "Disabling the following packages of" `adbc shell getprop 'ro.product.model'`":"
+  echo "Disabling the following packages of $(adbc shell getprop 'ro.product.model'):"
 
 for name in "${need_disable[@]}"; do
-  jq -r --arg name $name '. | map(select(.Package == $name)) | "" + (map(.Name) | unique | join(", ")) + " -> " + (map(.Package) | unique | join(", "))' "$json_file"
+  jq -r --arg name "$name" '. | map(select(.Package == $name)) | "" + (map(.Name) | unique | join(", ")) + " -> " + (map(.Package) | unique | join(", "))' "$json_file"
 done
 
-read -p "Do you want to continue? [s/N] " confirm
+read -rp "Do you want to continue? [s/N] " confirm
 if [[ "$confirm" == "s" || "$confirm" == "S" ]]; then
   for package in "${need_disable[@]}"; do
 
