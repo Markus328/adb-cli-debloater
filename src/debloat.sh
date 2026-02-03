@@ -14,14 +14,33 @@ terminate(){
   kill -s SIGINT $self_pid 
   exit 1
 }
+
+yes_confirm(){
+  ask="$1"
+  read -rp "$ask [Y/n] " confirm
+
+  if [[ "$confirm" == "N" || "$confirm" == "n" ]]; then
+    return 1
+  fi
+}
+
+no_confirm(){
+  ask="$1"
+  read -rp "$ask [y/N] " confirm
+
+  if ! [[ "$confirm" == "Y" || "$confirm" == "y" ]]; then
+    return 1
+  fi
+}
+
 json_file="$1"
 shift
 
 adb_args="$*"
 adbc(){
   args="$*"
- adb $adb_args $args
- return $?
+  adb $adb_args $args
+  return $?
 }
 
 init_checks(){
@@ -38,7 +57,9 @@ if ! adbc shell command -v pm >/dev/null; then
   terminate
 fi
 
-echo "[Device]: $(adbc shell getprop 'ro.product.model')"
+device="$(adbc shell getprop 'ro.product.model')"
+
+echo "[Device]: $device"
 echo "[PM access]: OK"
 echo "[JSON]: $json_file"
 }
@@ -60,7 +81,7 @@ for jp in "${json_packages[@]}"; do
   done
 done
 
-mapfile -t need_disable <<< "$(echo "${need_disable[@]}" | tr ' ' '\n' |  sort | uniq))"
+mapfile -t need_disable <<< "$(echo "${need_disable[@]}" | tr ' ' '\n' |  sort | uniq)"
 
 if [ ${#need_disable[@]} -eq 0 ]; then
   echo "No package needs to be disabled. Your device is unbloated :)"
@@ -72,34 +93,46 @@ fi
 
 disable_packages(){
 
-  echo "Disabling the following packages of $(adbc shell getprop 'ro.product.model'):"
+ while true; do 
+  echo "Disabling the following packages of $device:"
 
-for name in "${need_disable[@]}"; do
-  jq -r --arg name "$name" '. | map(select(.Package == $name)) | "" + (map(.Name) | unique | join(", ")) + " -> " + (map(.Package) | unique | join(", "))' "$json_file"
+for i in "${!need_disable[@]}"; do
+  jq -r --arg name "${need_disable[i]}" --arg i "$((i+1))" '. | map(select(.Package == $name)) | "[\($i)] " + (map(.Name) | unique | join(", ")) + " -> " + (map(.Package) | unique | join(", "))' "$json_file"
 done
 
-read -rp "Do you want to continue? [s/N] " confirm
-if [[ "$confirm" == "s" || "$confirm" == "S" ]]; then
+if ! no_confirm "Do you want to continue?"; then
+
+# TODO: Store the user prefs about saved packages and ignores them automatically
+  if no_confirm "Do you want to choose which apps will be saved from debloat?"; then
+    read -rp "Select each app by its number. Split them by space: " -a app_numbers
+
+    for i in "${app_numbers[@]}"; do
+      need_disable[i-1]=""
+    done
+
+    read -ra need_disable <<< "${need_disable[@]}"
+
+  else
+    return 1
+  fi
+
+else
+  break
+fi
+
+done
+
   for package in "${need_disable[@]}"; do
 
     echo "Disabling \"$package\"..."
 
-    adbc shell pm disable --user 0 "$package"
-    [ $? -eq 0 ] || adbc shell pm disable-user --user 0 "$package"
-    if [ $? -ne 0 ]; then 
-      read -p "\"$package\" cannot be disabled. Try to uninstall it? [S/n] " confirm
-      [[ "$confirm" == "N" || "$confirm" == "n" ]] && continue
-
-      adbc shell pm uninstall -k --user 0 "$package"
-    fi
-
-    if [ $? -ne 0 ]; then
-      echo "error!"
+    if ! (adbc shell pm disable --user 0 "$package" || adbc shell pm disable-user --user 0 "$package"); then
+      if yes_confirm "\"$package\" cannot be disabled. Try to uninstall it?"; then
+        adbc shell pm uninstall -k --user 0 "$package" || echo "error uninstalling \"$package\"!"
+      fi
     fi
 
   done
-
-fi
 
 }
 
