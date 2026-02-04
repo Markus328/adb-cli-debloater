@@ -4,14 +4,14 @@
 self_pid=$$
 
 display_help(){
-  echo "Usage: $0 <json file> [adb options]" >&2
+  echo "Usage: $0 <json file>|<device brand> [adb options]" >&2
   exit 1
 }
 
-trap display_help SIGINT
+trap display_help SIGTERM
 
 terminate(){
-  kill -s SIGINT $self_pid 
+  kill -s SIGTERM $self_pid 
   exit 1
 }
 
@@ -33,7 +33,9 @@ no_confirm(){
   fi
 }
 
-json_file="$1"
+json_choice="${1:-}"
+json_file=
+
 shift
 
 adb_args="$*"
@@ -44,13 +46,27 @@ adbc(){
 }
 
 init_checks(){
-if [ ! -f "$json_file" ]; then
-  echo "json file $json_file not found!" >&2
+
+[[ "$json_choice" ]] || terminate
+
+SDIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
+SDIR=$(realpath -e --relative-base="$PWD" "$SDIR/..")
+
+possible_json_files=("$json_choice" "${json_choice}.json" "$SDIR/JSON/${json_choice}.json")
+
+for f in "${possible_json_files[@]}"; do
+  if [ -f "$f" ]; then
+    json_file="$f"
+    break
+  fi
+done
+
+if ! [[ -f "$json_file" ]]; then
+  printf "None of '%s'" "${possible_json_files[0]}"
+  printf ", '%s'" "${possible_json_files[@]:1}"
+  printf " were found!\n"
   terminate
 fi
-
-
-
 
 if ! adbc shell command -v pm >/dev/null; then
   echo "Couldn't access device's package manager through 'adb $adb_args shell'. Are you sure the device is connected and/or the options are right?" >&2
